@@ -1,20 +1,27 @@
 import random
 import time
 import uuid
-from typing import Dict, List
+from typing import Dict, List, Optional
 from ..models.game import GameRound, User, GameSession, Direction, NewGameResponse, AnswerRequest, AnswerResponse
 
 class GameService:
     def __init__(self):
-        self.current_user = User(
-            id="default_user",
-            balance=1000,
-            gamesPlayed=0,
-            gamesWon=0,
-            totalWinnings=0
-        )
+        # Храним пользователей по их ID
+        self.users: Dict[int, User] = {}
         self.active_rounds: Dict[str, GameRound] = {}
         self.active_sessions: Dict[str, GameSession] = {}
+    
+    def get_or_create_user(self, user_id: int) -> User:
+        """Получает существующего пользователя или создает нового"""
+        if user_id not in self.users:
+            self.users[user_id] = User(
+                id=str(user_id),
+                balance=1000,  # Стартовый баланс
+                gamesPlayed=0,
+                gamesWon=0,
+                totalWinnings=0
+            )
+        return self.users[user_id]
     
     def generate_realistic_chart(self, length: int = 25) -> List[float]:
         """Генерирует реалистичный график цены с случайными колебаниями"""
@@ -72,11 +79,12 @@ class GameService:
             timestamp=game_round.timestamp
         )
     
-    def submit_answer(self, answer: AnswerRequest) -> AnswerResponse:
+    def submit_answer(self, answer: AnswerRequest, user_id: int) -> AnswerResponse:
         """Обрабатывает ответ пользователя"""
         if answer.roundId not in self.active_rounds:
             raise ValueError("Раунд не найден")
         
+        user = self.get_or_create_user(user_id)
         game_round = self.active_rounds[answer.roundId]
         is_correct = answer.userAnswer == game_round.correctAnswer
         
@@ -86,20 +94,20 @@ class GameService:
         # Расчет выплаты
         if is_correct:
             payout = int(answer.bet * coefficient)
-            self.current_user.balance += payout
-            self.current_user.gamesWon += 1
-            self.current_user.totalWinnings += payout
+            user.balance += payout
+            user.gamesWon += 1
+            user.totalWinnings += payout
         else:
             payout = -answer.bet
-            self.current_user.balance -= answer.bet
+            user.balance -= answer.bet
         
-        self.current_user.gamesPlayed += 1
+        user.gamesPlayed += 1
         
         # Создание сессии
         session_id = str(uuid.uuid4())
         session = GameSession(
             sessionId=session_id,
-            userId=self.current_user.id,
+            userId=user.id,
             roundId=answer.roundId,
             bet=answer.bet,
             userAnswer=answer.userAnswer,
@@ -118,30 +126,33 @@ class GameService:
             isCorrect=is_correct,
             correctAnswer=game_round.correctAnswer,
             payout=payout,
-            newBalance=self.current_user.balance,
+            newBalance=user.balance,
             coefficient=coefficient
         )
     
-    def get_user_balance(self) -> int:
+    def get_user_balance(self, user_id: int) -> int:
         """Возвращает текущий баланс пользователя"""
-        return self.current_user.balance
+        user = self.get_or_create_user(user_id)
+        return user.balance
     
-    def update_user_balance(self, new_balance: int) -> int:
+    def update_user_balance(self, user_id: int, new_balance: int) -> int:
         """Обновляет баланс пользователя"""
-        self.current_user.balance = new_balance
-        return self.current_user.balance
+        user = self.get_or_create_user(user_id)
+        user.balance = new_balance
+        return user.balance
     
-    def get_game_statistics(self) -> dict:
+    def get_game_statistics(self, user_id: int) -> dict:
         """Возвращает статистику игр пользователя"""
+        user = self.get_or_create_user(user_id)
         win_rate = 0
-        if self.current_user.gamesPlayed > 0:
-            win_rate = round((self.current_user.gamesWon / self.current_user.gamesPlayed) * 100, 1)
+        if user.gamesPlayed > 0:
+            win_rate = round((user.gamesWon / user.gamesPlayed) * 100, 1)
         
         return {
-            "gamesPlayed": self.current_user.gamesPlayed,
-            "gamesWon": self.current_user.gamesWon,
+            "gamesPlayed": user.gamesPlayed,
+            "gamesWon": user.gamesWon,
             "winRate": win_rate,
-            "totalWinnings": self.current_user.totalWinnings
+            "totalWinnings": user.totalWinnings
         }
 
 # Глобальный экземпляр сервиса

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { GameRound, AnswerRequest, AnswerResponse } from "../types/game";
+import { telegramService } from "./telegram";
 
 const API_BASE_URL = "http://localhost:8000/api";
 
@@ -9,6 +10,15 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+// Добавляем interceptor для автоматической отправки Telegram init data
+api.interceptors.request.use((config) => {
+  const initData = telegramService.getInitData();
+  if (initData) {
+    config.headers["X-Telegram-Init-Data"] = initData;
+  }
+  return config;
 });
 
 export const gameApi = {
@@ -36,6 +46,18 @@ export const gameApi = {
       new_balance: newBalance,
     });
     return response.data.balance;
+  },
+
+  // Получить информацию о пользователе
+  async getUserInfo(): Promise<any> {
+    const response = await api.get("/user/info");
+    return response.data.user;
+  },
+
+  // Получить статистику игр
+  async getUserStats(): Promise<any> {
+    const response = await api.get("/user/stats");
+    return response.data;
   },
 };
 
