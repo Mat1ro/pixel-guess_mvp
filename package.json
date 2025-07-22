@@ -1,0 +1,25 @@
+{
+  "name": "pixel-guess",
+  "version": "1.0.0",
+  "description": "Telegram Mini App - Pixel Guess Game",
+  "main": "backend/app/main.py",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build",
+    "start": "cd backend && python -m app.main",
+    "postbuild": "cp -r frontend/build backend/static || true"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "python": ">=3.8.0"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "keywords": [
+    "telegram",
+    "miniapp",
+    "game",
+    "pixel-guess"
+  ],
+  "author": "",
+  "license": "MIT"
+}

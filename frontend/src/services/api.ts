@@ -3,10 +3,11 @@ import { GameRound, AnswerRequest, AnswerResponse } from "../types/game";
 import { telegramService } from "./telegram";
 
 // Определяем API URL в зависимости от окружения
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || process.env.NODE_ENV === "production"
-    ? "https://your-backend-url.railway.app/api"
-    : "http://localhost:8000/api";
+const API_BASE_URL = 
+  process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === "production" 
+    ? `${window.location.origin}/api` 
+    : "http://localhost:8000/api");
 
 const api = axios.create({
   baseURL: API_BASE_URL,

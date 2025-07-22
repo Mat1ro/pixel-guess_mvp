@@ -1,6 +1,8 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from dotenv import load_dotenv
 from .routes.game import game_router
 
@@ -39,9 +41,30 @@ app.add_middleware(
 # Включение маршрутов
 app.include_router(game_router, prefix="/api")
 
-@app.get("/")
-async def root():
-    return {"message": "Pixel Guess Game API", "status": "running"}
+# Обслуживание статических файлов фронтенда
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    
+    @app.get("/")
+    async def serve_spa():
+        index_path = os.path.join(static_dir, "index.html")
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
+        return {"message": "Pixel Guess Game API", "status": "running"}
+        
+    @app.get("/{path:path}")
+    async def serve_spa_paths(path: str):
+        # Для SPA возвращаем index.html для всех маршрутов
+        if not path.startswith("api/"):
+            index_path = os.path.join(static_dir, "index.html")
+            if os.path.exists(index_path):
+                return FileResponse(index_path)
+        return {"message": "Pixel Guess Game API", "status": "running"}
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "Pixel Guess Game API", "status": "running"}
 
 @app.get("/health")
 async def health():
